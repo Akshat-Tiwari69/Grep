@@ -47,6 +47,16 @@ def match_at_position(input_line, pattern, start, must_end):
                     return False
             input_idx += 1
             pattern_idx = end_idx
+        elif pattern[pattern_idx] == '+':
+            if pattern_idx == 0:
+                return False
+            prev_char = pattern[pattern_idx - 1]
+            while input_idx < len(input_line) and (prev_char == input_line[input_idx] or
+                                                  (prev_char == '\\' and
+                                                   (prev_char == 'd' and input_line[input_idx].isdigit() or
+                                                    prev_char == 'w' and (input_line[input_idx].isalnum() or input_line[input_idx] == '_')))):
+                input_idx += 1
+            pattern_idx += 1
         else:
             if pattern[pattern_idx] != input_line[input_idx]:
                 return False
