@@ -2,13 +2,16 @@
 import sys
 
 def match_pattern(input_line, pattern):
-    for start in range(len(input_line)):
-        if match_at_position(input_line[start:], pattern):
-            return True
+    if pattern.startswith('^'):
+        return match_at_position(input_line, pattern[1:], 0)
+    else:
+        for start in range(len(input_line)):
+            if match_at_position(input_line, pattern, start):
+                return True
     return False
 
-def match_at_position(input_line, pattern):
-    input_idx = 0
+def match_at_position(input_line, pattern, start):
+    input_idx = start
     pattern_idx = 0
 
     while pattern_idx < len(pattern):
