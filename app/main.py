@@ -6,6 +6,11 @@ def match_pattern(input_line, pattern):
             if char.isdigit():
                 return True
         return False
+    elif pattern == "\\w":
+        for char in input_line:
+            if char.isalnum() or char == "_":
+                return True
+        return False
     elif len(pattern) == 1:
         return pattern in input_line
     else:
