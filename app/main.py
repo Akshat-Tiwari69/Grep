@@ -1,33 +1,65 @@
+#!/usr/bin/env python3
 import sys
-import re
 
 def match_pattern(input_line, pattern):
-    if pattern == "\\d":
-        return any(char.isdigit() for char in input_line)
-    elif pattern == "\\w":
-        return any(char.isalnum() or char == "_" for char in input_line)
-    elif pattern.startswith("[^") and pattern.endswith("]"):
-        characters = pattern[2:-1]
-        return any(char not in characters for char in input_line)
-    elif pattern.startswith("[") and pattern.endswith("]"):
-        characters = pattern[1:-1]
-        return any(char in characters for char in input_line)
-    else:
-        regex_pattern = pattern.replace("\\d", "\\d").replace("\\w", "\\w")
-        return bool(re.search(regex_pattern, input_line))
+    for start in range(len(input_line)):
+        if match_at_position(input_line[start:], pattern):
+            return True
+    return False
+
+def match_at_position(input_line, pattern):
+    input_idx = 0
+    pattern_idx = 0
+
+    while pattern_idx < len(pattern):
+        if input_idx >= len(input_line):
+            return False
+
+        if pattern[pattern_idx] == '\\':
+            pattern_idx += 1
+            if pattern_idx >= len(pattern):
+                return False
+            if pattern[pattern_idx] == 'd':
+                if not input_line[input_idx].isdigit():
+                    return False
+                input_idx += 1
+            elif pattern[pattern_idx] == 'w':
+                if not (input_line[input_idx].isalnum() or input_line[input_idx] == '_'):
+                    return False
+                input_idx += 1
+        elif pattern[pattern_idx] == '[':
+            end_idx = pattern.find(']', pattern_idx)
+            if end_idx == -1:
+                raise RuntimeError("Unmatched [")
+            char_class = pattern[pattern_idx+1:end_idx]
+            if char_class.startswith('^'):
+                if input_line[input_idx] in char_class[1:]:
+                    return False
+            else:
+                if input_line[input_idx] not in char_class:
+                    return False
+            input_idx += 1
+            pattern_idx = end_idx
+        else:
+            if pattern[pattern_idx] != input_line[input_idx]:
+                return False
+            input_idx += 1
+        pattern_idx += 1
+
+    return True
 
 def main():
+    if len(sys.argv) != 3 or sys.argv[1] != "-E":
+        print("Usage: ./your_program.sh -E <pattern>")
+        sys.exit(1)
+
     pattern = sys.argv[2]
     input_line = sys.stdin.read().strip()
 
-    if sys.argv[1] != "-E":
-        print("Expected first argument to be '-E'")
-        exit(1)
-
     if match_pattern(input_line, pattern):
-        exit(0)
+        sys.exit(0)
     else:
-        exit(1)
+        sys.exit(1)
 
 if __name__ == "__main__":
     main()
