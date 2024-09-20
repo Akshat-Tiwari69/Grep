@@ -11,6 +11,12 @@ def match_pattern(input_line, pattern):
             if char.isalnum() or char == "_":
                 return True
         return False
+    elif pattern.startswith("[^") and pattern.endswith("]"):
+        characters = pattern[2:-1]
+        for char in input_line:
+            if char not in characters:
+                return True
+        return False
     elif pattern.startswith("[") and pattern.endswith("]"):
         characters = pattern[1:-1]
         for char in input_line:
