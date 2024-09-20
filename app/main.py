@@ -2,15 +2,19 @@
 import sys
 
 def match_pattern(input_line, pattern):
-    if pattern.startswith('^'):
-        return match_at_position(input_line, pattern[1:], 0)
+    if pattern.startswith('^') and pattern.endswith('$'):
+        return match_at_position(input_line, pattern[1:-1], 0, True)
+    elif pattern.startswith('^'):
+        return match_at_position(input_line, pattern[1:], 0, False)
+    elif pattern.endswith('$'):
+        return match_at_position(input_line, pattern[:-1], len(input_line) - len(pattern) + 1, True)
     else:
         for start in range(len(input_line)):
-            if match_at_position(input_line, pattern, start):
+            if match_at_position(input_line, pattern, start, False):
                 return True
     return False
 
-def match_at_position(input_line, pattern, start):
+def match_at_position(input_line, pattern, start, must_end):
     input_idx = start
     pattern_idx = 0
 
@@ -49,7 +53,7 @@ def match_at_position(input_line, pattern, start):
             input_idx += 1
         pattern_idx += 1
 
-    return True
+    return not must_end or input_idx == len(input_line)
 
 def main():
     if len(sys.argv) != 3 or sys.argv[1] != "-E":
