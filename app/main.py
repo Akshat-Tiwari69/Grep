@@ -60,16 +60,16 @@ def match_at_position(input_line, pattern, start, must_end):
                                                     prev_char == 'w' and (input_line[input_idx].isalnum() or input_line[input_idx] == '_')))):
                 input_idx += 1
         elif pattern[pattern_idx] == '?':
-            # Handle the ? quantifier
             if pattern_idx == 0:
                 return False
-            # The previous character is optional, so we can skip it
             pattern_idx += 1
             continue
+        elif pattern[pattern_idx] == '.':
+            # Handle the . wildcard character
+            input_idx += 1
         else:
             if pattern[pattern_idx] != input_line[input_idx]:
                 if pattern_idx + 1 < len(pattern) and pattern[pattern_idx + 1] == '?':
-                    # Skip this optional character in the pattern
                     pattern_idx += 2
                     continue
                 return False
