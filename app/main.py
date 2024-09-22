@@ -1,95 +1,122 @@
-#!/usr/bin/env python3
 import sys
 
-def match_pattern(input_line, pattern):
-    if pattern.startswith('^') and pattern.endswith('$'):
-        return match_at_position(input_line, pattern[1:-1], 0, True)
-    elif pattern.startswith('^'):
-        return match_at_position(input_line, pattern[1:], 0, False)
-    elif pattern.endswith('$'):
-        return match_at_position(input_line, pattern[:-1], len(input_line) - len(pattern) + 1, True)
-    else:
-        for start in range(len(input_line)):
-            if match_at_position(input_line, pattern, start, False):
+def match_digit(char: str):
+    return ord("0") <= ord(char) <= ord("9")
+
+def match_alphabets(char: str):
+    is_upper = ord("A") <= ord(char) <= ord("Z")
+    is_lower = ord("a") <= ord(char) <= ord("z")
+    return is_upper or is_lower
+
+def match_alphanum(char: str):
+    return match_alphabets(char) or match_digit(char) or char == "_"
+
+def match_pcg(char: str, group: str):
+    return char in group
+
+def match_ncg(char: str, group: str):
+    return char not in group
+
+def is_ncgp(pattern):
+    return len(pattern) >= 4 and pattern[0:2] == "[^" and pattern[-1] == "]"
+
+def is_pcgp(pattern):
+    return len(pattern) >= 3 and pattern[0] == "[" and pattern[-1] == "]"
+
+def is_alphap(pattern):
+    return pattern == "\\w"
+
+def is_digitp(pattern):
+    return pattern == "\\d"
+
+def match_character(char: str, pattern: str):
+    if is_ncgp(pattern):
+        return match_ncg(char, pattern)
+    if is_pcgp(pattern):
+        return match_pcg(char, pattern)
+    if is_alphap(pattern):
+        return match_alphanum(char)
+    if is_digitp(pattern):
+        return match_digit(char)
+    if pattern == ".":
+        return bool(char)
+    return pattern == char
+
+def parse(regex: str):
+    j = 0
+    pattern = []
+    while j < len(regex):
+        if regex[j : j + 2] == "\\d":
+            j += 2
+            pattern.append("\\d")
+        elif regex[j : j + 2] == "\\w":
+            j += 2
+            pattern.append("\\w")
+        elif regex[j : j + 2] == "[^" and regex.find("]") != -1:
+            end = regex.find("]") + 1
+            pattern.append(regex[j:end])
+            j = end
+        elif regex[j : j + 1] == "[" and regex.find("]") != -1:
+            end = regex.find("]") + 1
+            pattern.append(regex[j:end])
+            j = end
+        else:
+            pattern.append(regex[j])
+            j += 1
+    return pattern
+
+def match_pattern(text: str, pattern: str):
+    regex = parse(pattern)
+    if regex and regex[0] == "^":
+        return match_here(text, regex[1:])
+    while text:
+        if match_here(text, regex):
+            return True
+        text = text[1:]
+
+def match_here(text, regex):
+    if not regex:
+        return True
+    if len(regex) == 1 and regex[0] == "$":
+        return not text
+    if len(regex) == 1 and len(text) == 1:
+        return match_character(text[0], regex[0])
+    if len(regex) >= 2 and regex[1] == "+":
+        return match_plus(regex[0], text, regex[2:])
+    if len(regex) >= 2 and regex[1] == "?":
+        return match_star(regex[0], text, regex[2:])
+    if len(regex) >= 2 and regex[0] == "(" and ")" in regex:
+        end_index = regex.index(")")
+        or_patterns = [parse(regex) for regex in "".join(regex[1:end_index]).split("|")]
+        after_part = regex[end_index + 1 :]
+        for pattern in or_patterns:
+            if match_here(text, pattern + after_part):
                 return True
+        return False
+    if text and match_character(text[0], regex[0]):
+        return match_here(text[1:], regex[1:])
     return False
 
-def match_at_position(input_line, pattern, start, must_end):
-    input_idx = start
-    pattern_idx = 0
+def match_plus(char, text, regex):
+    if not match_character(text[0], char[0]):
+        return False
+    while text and match_character(text[0], char[0]):
+        text = text[1:]
+    return match_here(text, regex)
 
-    while pattern_idx < len(pattern):
-        if input_idx >= len(input_line):
-            # Check if the rest of the pattern is optional
-            while pattern_idx < len(pattern) - 1 and pattern[pattern_idx + 1] == '?':
-                pattern_idx += 2
-            return pattern_idx == len(pattern)
-
-        if pattern[pattern_idx] == '\\':
-            pattern_idx += 1
-            if pattern_idx >= len(pattern):
-                return False
-            if pattern[pattern_idx] == 'd':
-                if not input_line[input_idx].isdigit():
-                    return False
-                input_idx += 1
-            elif pattern[pattern_idx] == 'w':
-                if not (input_line[input_idx].isalnum() or input_line[input_idx] == '_'):
-                    return False
-                input_idx += 1
-        elif pattern[pattern_idx] == '[':
-            end_idx = pattern.find(']', pattern_idx)
-            if end_idx == -1:
-                raise RuntimeError("Unmatched [")
-            char_class = pattern[pattern_idx+1:end_idx]
-            if char_class.startswith('^'):
-                if input_line[input_idx] in char_class[1:]:
-                    return False
-            else:
-                if input_line[input_idx] not in char_class:
-                    return False
-            input_idx += 1
-            pattern_idx = end_idx
-        elif pattern[pattern_idx] == '+':
-            if pattern_idx == 0:
-                return False
-            prev_char = pattern[pattern_idx - 1]
-            while input_idx < len(input_line) and (prev_char == input_line[input_idx] or
-                                                  (prev_char == '\\' and
-                                                   (prev_char == 'd' and input_line[input_idx].isdigit() or
-                                                    prev_char == 'w' and (input_line[input_idx].isalnum() or input_line[input_idx] == '_')))):
-                input_idx += 1
-        elif pattern[pattern_idx] == '?':
-            if pattern_idx == 0:
-                return False
-            pattern_idx += 1
-            continue
-        elif pattern[pattern_idx] == '.':
-            # Handle the . wildcard character
-            input_idx += 1
-        else:
-            if pattern[pattern_idx] != input_line[input_idx]:
-                if pattern_idx + 1 < len(pattern) and pattern[pattern_idx + 1] == '?':
-                    pattern_idx += 2
-                    continue
-                return False
-            input_idx += 1
-        pattern_idx += 1
-
-    return not must_end or input_idx == len(input_line)
+def match_star(char, text, regex):
+    while text and match_character(text[0], char[0]):
+        text = text[1:]
+    return match_here(text, regex)
 
 def main():
-    if len(sys.argv) != 3 or sys.argv[1] != "-E":
-        print("Usage: ./your_program.sh -E <pattern>")
-        sys.exit(1)
-
     pattern = sys.argv[2]
-    input_line = sys.stdin.read().strip()
-
-    if match_pattern(input_line, pattern):
-        sys.exit(0)
-    else:
-        sys.exit(1)
+    text = sys.stdin.read().rstrip("\n")
+    if sys.argv[1] != "-E":
+        exit(1)
+    if match_pattern(text, pattern):
+        exit(0)
+    exit(1)
 
 if __name__ == "__main__":
     main()
